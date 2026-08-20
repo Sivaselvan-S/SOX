@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://YOUR_AWS_BACKEND_URL/api/$1"
+      "destination": "http://32.236.50.26:8000/api/$1"
     },
     {
       "source": "/((?!api/).*)",
