@@ -13,6 +13,41 @@ logger = logging.getLogger("griffsox.action_audit")
 router = APIRouter()
 
 
+def _execute_approved_tool(tool_name: str, parameters: dict) -> dict:
+    """Execute an approved HITL tool call against the real finance database."""
+    from app.db import finance_db
+
+    try:
+        if tool_name == "database_delete":
+            query = parameters.get("query", "")
+            record_count = int(parameters.get("record_count", 1))
+            result = finance_db.delete_finance_records(query, record_count)
+            logger.info(f"HITL approved: executed database_delete — {result}")
+            return result
+
+        elif tool_name == "database_insert":
+            count = int(parameters.get("count", 1))
+            vendor_name = parameters.get("vendor_name", "Approved Insert")
+            category = parameters.get("category", "General")
+            amount = float(parameters.get("amount", 0.0))
+            result = finance_db.insert_finance_records(count, vendor_name, category, amount)
+            logger.info(f"HITL approved: executed database_insert — {result}")
+            return result
+
+        elif tool_name == "database_query" or tool_name == "count_records":
+            result = finance_db.query_finance_records()
+            logger.info(f"HITL approved: executed {tool_name} — {result}")
+            return result
+
+        else:
+            logger.warning(f"HITL approved for unknown tool '{tool_name}' — no execution handler registered.")
+            return {"message": f"Tool '{tool_name}' approved but no auto-execution handler registered. Execute manually."}
+
+    except Exception as e:
+        logger.error(f"HITL approved execution error for tool '{tool_name}': {e}")
+        return {"error": str(e), "message": f"Approval recorded but execution of '{tool_name}' failed: {e}"}
+
+
 class AuditManager:
     """In-memory store and WebSocket dispatcher for Action Guardrail Audit Log & HITL Queue."""
 
@@ -57,8 +92,15 @@ class AuditManager:
         record.hitl_status = HITLStatus.APPROVED if approved else HITLStatus.REJECTED
         del self.pending_hitl[record_id]
 
+        # If approved, actually execute the intercepted tool call now
+        execution_result = None
+        if approved:
+            execution_result = _execute_approved_tool(record.tool_name, record.parameters)
+
         await self.broadcast_ws({
             "event_type": "HITL_RESOLVED",
+            "approved": approved,
+            "execution_result": execution_result,
             "record": record.model_dump(mode="json"),
         })
         return record
@@ -93,31 +135,91 @@ async def reject_hitl(record_id: str) -> AuditRecord:
     return await audit_manager.resolve_hitl(record_id, approved=False)
 
 
+from app.schemas.action_guard import ActionRule
+
+# ─── MongoDB-backed rule persistence ──────────────────────────────────────────
+# Rules are stored in MongoDB (griffsox_db.action_rules) so they survive
+# container restarts and redeployments. Falls back to action_rules.yaml on
+# first boot to seed the initial ruleset.
+
+def _get_rules_collection():
+    """Return the MongoDB action_rules collection via sync PyMongo, or None if not connected."""
+    try:
+        from pymongo import MongoClient
+        client = MongoClient(settings.MONGO_URI, serverSelectionTimeoutMS=3000)
+        db = client[settings.MONGO_DB_NAME]
+        return db["action_rules"]
+    except Exception as e:
+        logger.warning(f"MongoDB not available for rule persistence: {e}")
+        return None
+
+
+def _load_rules_from_mongo() -> Optional[List[ActionRule]]:
+    """Load all rules from MongoDB. Returns None if unavailable."""
+    col = _get_rules_collection()
+    if col is None:
+        return None
+    try:
+        docs = list(col.find({}, {"_id": 0}))
+        if not docs:
+            return None  # empty — will fall through to YAML seed
+        return [ActionRule(**d) for d in docs]
+    except Exception as e:
+        logger.error(f"Failed to load rules from MongoDB: {e}")
+        return None
+
+
+def _save_rules_to_mongo(rules: List[ActionRule]) -> bool:
+    """Persist all rules to MongoDB (full replace)."""
+    col = _get_rules_collection()
+    if col is None:
+        return False
+    try:
+        col.delete_many({})  # clear existing
+        if rules:
+            col.insert_many([r.model_dump(mode="json") for r in rules])
+        logger.info(f"Saved {len(rules)} action rules to MongoDB.")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to save rules to MongoDB: {e}")
+        return False
+
+
+def _load_rules_persistent() -> List[ActionRule]:
+    """Load rules: prefer MongoDB, fall back to action_rules.yaml, then seed Mongo."""
+    mongo_rules = _load_rules_from_mongo()
+    if mongo_rules is not None:
+        return mongo_rules
+    # First boot: seed from YAML file
+    yaml_rules = ActionRuleLoader.load(settings.ACTION_RULES_PATH)
+    if yaml_rules:
+        logger.info(f"Seeding {len(yaml_rules)} rules from YAML into MongoDB.")
+        _save_rules_to_mongo(yaml_rules)
+    return yaml_rules
+
+
 @router.get("/rules")
 async def get_active_rules():
     """Return active declarative action guardrail rules."""
-    rules = ActionRuleLoader.load(settings.ACTION_RULES_PATH)
+    rules = _load_rules_persistent()
     return {
-        "rules_file": settings.ACTION_RULES_PATH,
+        "rules_file": "mongodb:action_rules",
         "dry_run": audit_manager.dry_run,
         "rules": [r.model_dump(mode="json") for r in rules],
     }
 
 
-from app.schemas.action_guard import ActionRule
-
-
 @router.post("/rules", status_code=status.HTTP_201_CREATED, response_model=ActionRule)
 async def create_action_rule(rule: ActionRule):
-    """Add a new action guardrail rule to action_rules.yaml."""
-    rules = ActionRuleLoader.load(settings.ACTION_RULES_PATH)
-    # Check if ID exists, update if so, else append
+    """Add a new action guardrail rule (persisted to MongoDB)."""
+    rules = _load_rules_persistent()
     existing_idx = next((i for i, r in enumerate(rules) if r.id == rule.id), None)
     if existing_idx is not None:
         rules[existing_idx] = rule
     else:
         rules.append(rule)
-
+    _save_rules_to_mongo(rules)
+    # Also keep YAML in sync as backup
     ActionRuleLoader.save(rules, settings.ACTION_RULES_PATH)
     logger.info(f"Created/Updated action rule: {rule.id} ({rule.name})")
     return rule
@@ -125,13 +227,13 @@ async def create_action_rule(rule: ActionRule):
 
 @router.put("/rules/{rule_id}", response_model=ActionRule)
 async def update_action_rule(rule_id: str, rule: ActionRule):
-    """Update an existing action guardrail rule in action_rules.yaml."""
-    rules = ActionRuleLoader.load(settings.ACTION_RULES_PATH)
+    """Update an existing action guardrail rule (persisted to MongoDB)."""
+    rules = _load_rules_persistent()
     existing_idx = next((i for i, r in enumerate(rules) if r.id == rule_id), None)
     if existing_idx is None:
         raise HTTPException(status_code=404, detail=f"Rule with id '{rule_id}' not found.")
-
     rules[existing_idx] = rule
+    _save_rules_to_mongo(rules)
     ActionRuleLoader.save(rules, settings.ACTION_RULES_PATH)
     logger.info(f"Updated action rule: {rule_id}")
     return rule
@@ -139,12 +241,12 @@ async def update_action_rule(rule_id: str, rule: ActionRule):
 
 @router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_action_rule(rule_id: str):
-    """Delete an action guardrail rule by ID from action_rules.yaml."""
-    rules = ActionRuleLoader.load(settings.ACTION_RULES_PATH)
+    """Delete an action guardrail rule by ID (persisted to MongoDB)."""
+    rules = _load_rules_persistent()
     filtered = [r for r in rules if r.id != rule_id]
     if len(filtered) == len(rules):
         raise HTTPException(status_code=404, detail=f"Rule with id '{rule_id}' not found.")
-
+    _save_rules_to_mongo(filtered)
     ActionRuleLoader.save(filtered, settings.ACTION_RULES_PATH)
     logger.info(f"Deleted action rule: {rule_id}")
     return
