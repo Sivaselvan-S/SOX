@@ -21,9 +21,8 @@ COPY app/ ./app/
 COPY action_rules.yaml ./
 COPY rbac_policy.json* ./
 
-# Copy SQLite seed data directory (create directory if empty)
-RUN mkdir -p ./data
-COPY data* ./data/
+# Copy SQLite seed data directory
+COPY data/ ./data/
 
 # Switch to non-root user
 USER griffsox
