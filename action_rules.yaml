@@ -1,0 +1,32 @@
+rules:
+- id: rule-db-bulk-delete
+  name: Block Bulk Database Delete
+  tool: database_delete
+  condition:
+    param: record_count
+    operator: '>'
+    value: 100
+  outcome: block
+  reason: Bulk delete exceeding 100 records is prohibited without explicit authorization.
+- id: rule-email-external
+  name: HITL for External Email
+  tool: send_email
+  condition:
+    param: to_domain
+    operator: not_in
+    value:
+    - company.internal
+    - griffsox.io
+    - internal.domain
+  outcome: require_hitl
+  reason: Emails sent to external domains require human-in-the-loop approval.
+- id: rule-confidential-read
+  name: Log and Allow Confidential File Read
+  tool: read_file
+  condition:
+    param: path
+    operator: contains
+    value: confidential
+  outcome: log_and_allow
+  reason: Read access to confidential paths is allowed but creates an immutable audit
+    record.

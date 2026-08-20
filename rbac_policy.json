@@ -1,0 +1,6 @@
+{
+  "spiffe://prod/read-only-agent": ["read"],
+  "spiffe://prod/finance-agent": ["read", "database_write"],
+  "spiffe://prod/egress-agent": ["read", "file_egress"],
+  "spiffe://prod/admin-agent": ["read", "database_write", "file_egress", "system_exec"]
+}

@@ -1,0 +1,42 @@
+# ─── Docker build exclusions ──────────────────────────────────────────────────
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Frontend dev artifacts (only the built dist/ is relevant if bundled)
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
+
+# Git & IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dev/test files
+tests/
+harness/
+demo_agent.py
+test_agent.py
+*.md
+
+# Local env (NEVER include secrets in image)
+.env
+.env.*
+!.env.example
+
+# OS artifacts
+.DS_Store
+Thumbs.db
