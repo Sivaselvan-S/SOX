@@ -8,16 +8,21 @@ export const HitlQueue: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const loadData = async () => {
-    setIsLoading(true);
-    const data = await fetchPendingHitl();
-    setPendingItems(data);
-    setIsLoading(false);
+  const loadData = async (showLoadingSpinner = false) => {
+    if (showLoadingSpinner) setIsLoading(true);
+    try {
+      const data = await fetchPendingHitl();
+      setPendingItems(data);
+    } catch (err) {
+      console.error('Error fetching HITL queue:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 3000);
+    loadData(true);
+    const interval = setInterval(() => loadData(false), 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -56,7 +61,7 @@ export const HitlQueue: React.FC = () => {
           </div>
         </div>
 
-        <button onClick={loadData} className="btn-refresh">
+        <button onClick={() => loadData(true)} className="btn-refresh">
           <RefreshCw className="icon-sm" /> Refresh Queue
         </button>
       </div>

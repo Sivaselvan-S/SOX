@@ -8,16 +8,21 @@ export const ActionAuditLog: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filterOutcome, setFilterOutcome] = useState<string>('all');
 
-  const loadData = async () => {
-    setIsLoading(true);
-    const data = await fetchAuditLog();
-    setRecords(data);
-    setIsLoading(false);
+  const loadData = async (showLoadingSpinner = false) => {
+    if (showLoadingSpinner) setIsLoading(true);
+    try {
+      const data = await fetchAuditLog();
+      setRecords(data);
+    } catch (err) {
+      console.error('Error fetching audit log:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 4000);
+    loadData(true);
+    const interval = setInterval(() => loadData(false), 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -67,7 +72,7 @@ export const ActionAuditLog: React.FC = () => {
             </button>
           </div>
 
-          <button onClick={loadData} className="btn-refresh">
+          <button onClick={() => loadData(true)} className="btn-refresh">
             <RefreshCw className="icon-sm" /> Refresh
           </button>
         </div>
