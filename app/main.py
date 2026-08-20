@@ -10,11 +10,16 @@ from fastapi.responses import FileResponse
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.mongo import init_indexes, close_client
+from app.db.finance_db import init_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI lifespan: connect to MongoDB and init indexes on startup, close on shutdown."""
+    """FastAPI lifespan: connect to MongoDB and init SQLite finance DB on startup."""
+    try:
+        init_db()
+    except Exception as e:
+        print(f"Finance DB startup init error: {e}")
     await init_indexes()
     yield
     await close_client()

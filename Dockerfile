@@ -24,6 +24,9 @@ COPY rbac_policy.json* ./
 # Copy SQLite seed data directory
 COPY data/ ./data/
 
+# Grant non-root user ownership of application directory for SQLite DB write access
+RUN chown -R griffsox:griffsox /app
+
 # Switch to non-root user
 USER griffsox
 
