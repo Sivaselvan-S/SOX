@@ -1,16 +1,34 @@
 import type { IncidentRecord, TelemetryEvent, SystemHealth } from '../types/telemetry';
 
 const getApiBase = () => {
-  if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE;
-  if (typeof window !== 'undefined' && window.location.port !== '8000' && window.location.port !== '') {
-    return `http://${window.location.hostname}:8000`;
+  const envBase = import.meta.env.VITE_API_BASE;
+  if (envBase) {
+    // Prevent HTTPS -> HTTP Mixed Content browser block by using relative origin for rewrites
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && envBase.startsWith('http://')) {
+      return '';
+    }
+    return envBase;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return '';
   }
   return typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8000';
 };
 
 const getWsBase = () => {
-  if (import.meta.env.VITE_WS_BASE) return import.meta.env.VITE_WS_BASE;
-  return getApiBase().replace(/^http/, 'ws');
+  const envWs = import.meta.env.VITE_WS_BASE;
+  if (envWs && !(typeof window !== 'undefined' && window.location.protocol === 'https:' && envWs.startsWith('ws://'))) {
+    return envWs;
+  }
+  const base = getApiBase();
+  if (!base) {
+    if (typeof window !== 'undefined') {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${protocol}//${window.location.host}`;
+    }
+    return 'ws://127.0.0.1:8000';
+  }
+  return base.replace(/^http/, 'ws');
 };
 
 const API_BASE = getApiBase();

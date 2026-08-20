@@ -5,7 +5,11 @@
       "destination": "http://32.236.50.26:8000/api/$1"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/health",
+      "destination": "http://32.236.50.26:8000/health"
+    },
+    {
+      "source": "/((?!api/|health).*)",
       "destination": "/index.html"
     }
   ],
