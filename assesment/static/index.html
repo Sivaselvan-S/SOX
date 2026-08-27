@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agentic Text Comparator &amp; Cognitive Loop Studio</title>
+  <meta name="description" content="Interactive Evaluation Studio for pure-Python Agentic Text Comparison with persistent memory and cognitive loop visualization.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="brand-cluster">
+        <div class="logo-mark">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">Agentic Text Comparator</h1>
+          <span class="brand-subtitle">Pure Python ReAct + Reflexion Architecture</span>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <div class="status-pill" id="system-status-pill">
+          <span class="status-dot online"></span>
+          <span id="model-status-text">Harness Ready (gpt-4o-mini)</span>
+        </div>
+
+        <div class="session-selector-wrap">
+          <label for="session-id-input">Session ID:</label>
+          <input type="text" id="session-id-input" value="session_finance_dept" placeholder="Enter session id...">
+        </div>
+      </div>
+    </header>
+
+    <!-- Quick Scenario Bar -->
+    <section class="preset-bar" aria-label="Preset Evaluation Scenarios">
+      <span class="preset-label">Quick Scenarios:</span>
+      <button type="button" class="preset-btn active" id="btn-scenario-1" data-scenario="1">
+        <span class="badge-num">1</span> Multi-Iteration Analysis (Cold Start)
+      </button>
+      <button type="button" class="preset-btn" id="btn-scenario-2" data-scenario="2">
+        <span class="badge-num">2</span> Memory Recall Impact (Rule Active)
+      </button>
+      <button type="button" class="preset-btn" id="btn-scenario-3" data-scenario="3">
+        <span class="badge-num">3</span> Outage Recovery &amp; Guardrails
+      </button>
+    </section>
+
+    <!-- Main Studio Grid -->
+    <main class="studio-grid">
+      <!-- Left Column: Inputs & Memory Panel -->
+      <section class="studio-pane input-pane">
+        <div class="pane-header">
+          <div class="pane-title-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            <h2>Comparison Documents</h2>
+          </div>
+          <div class="pane-actions">
+            <button type="button" class="btn-ghost" id="btn-swap-texts" title="Swap Texts">⇄ Swap</button>
+            <button type="button" class="btn-ghost" id="btn-clear-texts" title="Clear Inputs">Clear</button>
+          </div>
+        </div>
+
+        <div class="dual-editor-container">
+          <div class="editor-block">
+            <div class="editor-subhead">
+              <span class="tag-doc tag-a">Text A (Original / Baseline)</span>
+              <span class="char-count" id="count-text-a">0 chars</span>
+            </div>
+            <textarea id="text-a-input" placeholder="Paste or type baseline document text here..." rows="8"></textarea>
+          </div>
+
+          <div class="editor-block">
+            <div class="editor-subhead">
+              <span class="tag-doc tag-b">Text B (Modified / Comparison)</span>
+              <span class="char-count" id="count-text-b">0 chars</span>
+            </div>
+            <textarea id="text-b-input" placeholder="Paste or type comparison document text here..." rows="8"></textarea>
+          </div>
+        </div>
+
+        <!-- Controls & Action Button -->
+        <div class="action-bar">
+          <div class="save-rule-toggle">
+            <label class="switch-label">
+              <input type="checkbox" id="check-save-rule" checked>
+              <span class="switch-custom"></span>
+              <span>Persist learned rule to SQLite3 Memory</span>
+            </label>
+          </div>
+          <button type="button" class="btn-primary" id="btn-run-comparison">
+            <svg class="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span id="btn-run-text">Run Agentic Comparison</span>
+          </button>
+        </div>
+
+        <!-- Persistent Memory Inspector -->
+        <div class="memory-card">
+          <div class="memory-header">
+            <div class="mem-title-cluster">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+              <h3>Persistent SQLite3 Memory Store</h3>
+              <span class="badge-count" id="memory-count-badge">0 rules</span>
+            </div>
+            <button type="button" class="btn-danger-ghost" id="btn-clear-memory" title="Purge Session Memory">Purge</button>
+          </div>
+          <div class="memory-list" id="memory-items-container">
+            <div class="empty-state-small">No memories stored for this session yet.</div>
+          </div>
+
+          <!-- Add Custom Rule UI -->
+          <div class="memory-add-section">
+            <div class="memory-add-header">
+              <span class="mem-add-title">+ Add a Preference Rule</span>
+              <span class="mem-add-hint">Will be injected into this session's future comparisons</span>
+            </div>
+            <div class="memory-add-row">
+              <input type="text" id="memory-key-input" placeholder='Tag (e.g. "focus_rule")' class="mem-key-input">
+              <input type="text" id="memory-value-input" placeholder="Write your rule instruction here..." class="mem-val-input">
+              <button type="button" class="btn-save-mem" id="btn-save-memory-rule">Save Rule</button>
+            </div>
+            <div class="quick-rules-row">
+              <span class="quick-rules-label">Quick Rules:</span>
+              <button type="button" class="quick-rule-chip" data-key="focus_rule" data-val="Focus only on numerical and metric changes. Suppress all tone and style observations.">Numbers Only</button>
+              <button type="button" class="quick-rule-chip" data-key="severity_rule" data-val="Only report discrepancies with High severity. Skip Medium and Low findings.">High Severity Only</button>
+              <button type="button" class="quick-rule-chip" data-key="tone_rule" data-val="Ignore all tone and sentiment changes. Report structural and factual differences only.">Ignore Tone</button>
+              <button type="button" class="quick-rule-chip" data-key="omission_rule" data-val="Pay special attention to omissions — content present in Text A but missing from Text B is critical.">Flag Omissions</button>
+              <button type="button" class="quick-rule-chip" data-key="legal_rule" data-val="This is a legal document review. Treat all clause changes, deadline shifts, and penalty modifications as High severity Factual changes.">Legal Mode</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Cognitive Loop Visualizer & Final Output -->
+      <section class="studio-pane output-pane">
+        <!-- Execution Telemetry Strip -->
+        <div class="telemetry-bar">
+          <div class="tele-item">
+            <span class="tele-label">Status</span>
+            <span class="tele-value" id="tele-status">IDLE</span>
+          </div>
+          <div class="tele-item">
+            <span class="tele-label">Iterations</span>
+            <span class="tele-value" id="tele-iterations">0 / 5</span>
+          </div>
+          <div class="tele-item">
+            <span class="tele-label">Tokens Spent</span>
+            <span class="tele-value" id="tele-tokens">0 tok</span>
+          </div>
+          <div class="tele-item">
+            <span class="tele-label">Step Latency</span>
+            <span class="tele-value" id="tele-latency">0.00s</span>
+          </div>
+        </div>
+
+        <!-- 4-Step Cognitive Loop Visualizer -->
+        <div class="loop-visualizer-card">
+          <div class="loop-visualizer-header">
+            <div class="loop-title-group">
+              <h3>Cognitive Loop Trace (Perceive ➔ Reason ➔ Act ➔ Reflect)</h3>
+            </div>
+            <div class="visualizer-controls-group">
+              <label for="animation-speed-select" class="speed-label">🎬 Demo Pace:</label>
+              <select id="animation-speed-select" class="speed-select">
+                <option value="600" selected>Smooth Demo (600ms)</option>
+                <option value="1200">Slow Narration (1.2s)</option>
+                <option value="250">Fast Step (250ms)</option>
+                <option value="0">Instant (0ms)</option>
+              </select>
+              <span class="live-pill" id="live-indicator">Ready</span>
+            </div>
+          </div>
+
+          <div class="cognitive-steps-track" id="cognitive-steps-track">
+            <!-- Dynamic Cognitive Steps Injected Here -->
+            <div class="cognitive-empty">Run a comparison or select a quick scenario to inspect the agent's multi-step cognitive trajectory.</div>
+          </div>
+        </div>
+
+        <!-- Final Agent Synthesis Report -->
+        <div class="synthesis-card">
+          <div class="synthesis-header">
+            <div class="synthesis-title-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              <h3>Final Comparison Summary &amp; Highlighted Differences</h3>
+            </div>
+            <button type="button" class="btn-ghost" id="btn-copy-result">Copy Summary</button>
+          </div>
+          <div class="synthesis-body" id="synthesis-body-container">
+            <p class="placeholder-text">Comparison report will appear here upon completion.</p>
+          </div>
+        </div>
+
+        <!-- Structured JSON Telemetry Drawer -->
+        <details class="logs-drawer" id="structured-logs-details">
+          <summary class="logs-summary">
+            <span>Structured JSON Event Stream &amp; Failure Traces</span>
+            <span class="badge-subtle">Audit Trail</span>
+          </summary>
+          <pre class="logs-pre" id="structured-logs-output">// Structured JSON log stream will appear here...</pre>
+        </details>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
