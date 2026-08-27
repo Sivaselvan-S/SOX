@@ -365,40 +365,10 @@ class MockOpenAIClient:
                     )
                 )
 
-            # Extract active memory rule filters from system content
-            sys_lower = system_content.lower()
-            has_numerical_rule = "numerical" in sys_lower or "budget" in sys_lower or "metric" in sys_lower
-            has_negative_only_rule = ("negative" in sys_lower or "-ve" in sys_lower) and ("only" in sys_lower or "focus" in sys_lower or "suppress" in sys_lower)
-            has_high_sev_rule = "high severity" in sys_lower or "high only" in sys_lower
-            has_ignore_tone_rule = "ignore tone" in sys_lower or "factual only" in sys_lower
-
-            filtered_discs = list(real_discrepancies)
-            active_rule_desc = None
-
-            if has_negative_only_rule:
-                filtered_discs = [
-                    d for d in real_discrepancies
-                    if "Negative Sentiment Shift" in d.get("description", "") or
-                       "Negative" in d.get("description", "") or
-                       any(nw in d.get("description", "").lower() for nw in self._NEGATIVE_WORDS)
-                ]
-                active_rule_desc = "Focus strictly on negative word changes (neutral/mild phrasing suppressed)"
-
-            elif has_numerical_rule:
-                filtered_discs = [
-                    d for d in real_discrepancies
-                    if d.get("category") in {"Factual", "Financial"} and
-                       ("$" in d.get("description", "") or "%" in d.get("description", "") or any(c.isdigit() for c in d.get("description", "")))
-                ]
-                active_rule_desc = "Focus strictly on numerical/metric changes (stylistic shifts suppressed)"
-
-            elif has_high_sev_rule:
-                filtered_discs = [d for d in real_discrepancies if d.get("severity") == "High"]
-                active_rule_desc = "High severity filter active (Medium and Low findings suppressed)"
-
-            elif has_ignore_tone_rule:
-                filtered_discs = [d for d in real_discrepancies if d.get("category") != "Tone"]
-                active_rule_desc = "Tone suppression active (reporting factual/structural differences only)"
+            # Extract active memory rule filters and apply via shared rule_engine
+            from rule_engine import parse_active_rules, apply_rule_filter
+            rules = parse_active_rules(system_content)
+            filtered_discs, active_rule_desc = apply_rule_filter(real_discrepancies, rules)
 
             if active_rule_desc:
                 if filtered_discs:

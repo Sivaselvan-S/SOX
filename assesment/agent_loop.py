@@ -135,8 +135,8 @@ def reflect(
         state["result"] = final_content.strip()
         return True
 
-    # If action_result contains a critical unrecoverable tool failure
-    if action_result and "Error:" in action_result and "not registered" in action_result:
+    # If action_result contains an unrecoverable tool error
+    if action_result and (action_result.startswith("Error:") or action_result.startswith("Error executing tool")):
         state["done"] = True
         state["result"] = f"Aborted due to tool error: {action_result}"
         return True

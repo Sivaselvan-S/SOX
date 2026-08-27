@@ -28,9 +28,20 @@ class AgentApiHandler(BaseHTTPRequestHandler):
     """HTTP Request Handler dispatching static assets and agent REST endpoints."""
 
     memory = AgentMemory(db_path="agent_memory.db")
-    config = AgentConfig(model="gpt-4o-mini", max_iterations=5, token_budget=4000, max_retries=3, base_backoff=0.2)
+    config = AgentConfig(model="gemini-2.5-flash", max_iterations=5, token_budget=4000, max_retries=3, base_backoff=0.2)
     harness = ProductionAgentHarness(config=config, memory=memory)
     client = get_client()
+
+    def _reset_client(self) -> None:
+        """Reset internal step counters across any client implementation."""
+        if hasattr(self.client, "reset"):
+            self.client.reset()
+        elif hasattr(self.client, "step_counter"):
+            self.client.step_counter = 0
+        if hasattr(self.client, "chat") and hasattr(self.client.chat, "completions"):
+            comps = self.client.chat.completions
+            if hasattr(comps, "step_counter"):
+                comps.step_counter = 0
 
     def _send_json(self, status_code: int, data: Dict[str, Any]) -> None:
         """Send a JSON HTTP response."""
@@ -132,8 +143,7 @@ class AgentApiHandler(BaseHTTPRequestHandler):
                 self._send_json(400, {"error": "Both text_a and text_b are required."})
                 return
 
-            if isinstance(self.client, MockOpenAIClient):
-                self.client.step_counter = 0
+            self._reset_client()
 
             start_time = time.perf_counter()
             report = self.harness.run_monitored_session(
@@ -180,8 +190,7 @@ class AgentApiHandler(BaseHTTPRequestHandler):
                 text_a = "Projected Financials Q3:\n- Marketing Budget: $120,000\n- Engineering Team: 45 engineers\n- Cloud Hosting: $35,000/mo\nTone: Friendly and informal."
                 text_b = "Projected Financials Q3:\n- Marketing Budget: $150,000\n- Engineering Team: 52 engineers\n- Cloud Hosting: $42,000/mo\nTone: Formal and assertive."
                 session_id = "session_finance_dept"
-                if isinstance(self.client, MockOpenAIClient):
-                    self.client.step_counter = 0
+                self._reset_client()
 
                 report = self.harness.run_monitored_session(session_id, text_a, text_b, self.client)
                 self.memory.save_information(
@@ -198,8 +207,7 @@ class AgentApiHandler(BaseHTTPRequestHandler):
                 text_c = "Performance Benchmarks Release 2.4:\n- Server Latency: 120ms\n- Throughput: 5,000 rps\n- Error Rate: 0.04%\nStylistic note: Our awesome team made incredible progress!"
                 text_d = "Performance Benchmarks Release 2.4:\n- Server Latency: 85ms\n- Throughput: 7,500 rps\n- Error Rate: 0.01%\nStylistic note: The updated infrastructure delivers robust stability."
                 session_id = "session_finance_dept"
-                if isinstance(self.client, MockOpenAIClient):
-                    self.client.step_counter = 0
+                self._reset_client()
 
                 report = self.harness.run_monitored_session(session_id, text_c, text_d, self.client)
                 self._send_json(200, report)

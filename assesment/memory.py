@@ -113,8 +113,11 @@ class AgentMemory:
                 model=model,
             )
             return response.data[0].embedding
-        except Exception:
-            # Graceful fallback to lexical search if API call fails
+        except Exception as exc:
+            import logging
+            logging.getLogger("agent_memory").warning(
+                f"Embedding generation failed, falling back to lexical search. Error: {exc}"
+            )
             return None
 
     def save_information(

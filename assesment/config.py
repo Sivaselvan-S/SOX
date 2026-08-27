@@ -21,7 +21,7 @@ class AgentConfig:
         base_backoff: Initial backoff multiplier in seconds for exponential backoff.
     """
 
-    model: str = "gpt-4o-mini"
+    model: str = "gemini-2.5-flash"
     max_iterations: int = 5
     token_budget: int = 4000
     max_retries: int = 3

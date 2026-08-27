@@ -274,29 +274,32 @@ Stylistic note: The updated infrastructure delivers robust stability.`,
         refDetail: `Observation from '${initialTool}' received. Proceeding to Cycle #2 for discrepancy classification.`
       });
 
-      // Cycle 2: Discrepancy Classification Tool
-      cycles.push({
-        num: 2,
-        name: secondTool,
-        badge: secondTool,
-        pTitle: "1. Perceive",
-        pShort: "Ingested diff observation and active memory preference rules",
-        pDetail: `Ingested diff observation from Iteration #1 with ${data.discrepancies?.length || 1} identified discrepancy items. Checked active session memory for tone/numerical rules.`,
-        rTitle: "2. Reason",
-        rShort: "Classified semantic impact and determined discrepancy categories & severities",
-        rDetail: "Evaluated each discrepancy against semantic and sentiment criteria. Dispatched categorize_discrepancy to structure findings into Factual, Tone, or Omission with High/Medium/Low severity.",
-        aTitle: "3. Act",
-        aShort: `Executed categorize_discrepancy tool`,
-        aDetail: rawToolCycles[1]?.toolArgs || JSON.stringify(data.discrepancies?.[0] || { category: "Tone/Factual", severity: "High" }, null, 2),
-        aOutput: rawToolCycles[1]?.toolOutput || JSON.stringify(data.discrepancies || [], null, 2),
-        refTitle: "4. Reflect",
-        refShort: "Verified discrepancy categorization; all deltas structured for report generation",
-        refDetail: "Observation evaluated: all discrepancies categorized. Goal state requires final report synthesis (state['done'] = False). Moving to Iteration Cycle #3 for executive summary."
-      });
+      // Cycle 2: Discrepancy Classification Tool (only when 2+ tools were dispatched)
+      if (rawToolCycles.length >= 2) {
+        cycles.push({
+          num: 2,
+          name: secondTool,
+          badge: secondTool,
+          pTitle: "1. Perceive",
+          pShort: "Ingested diff observation and active memory preference rules",
+          pDetail: `Ingested diff observation from Iteration #1 with ${data.discrepancies?.length || 1} identified discrepancy items. Checked active session memory for tone/numerical rules.`,
+          rTitle: "2. Reason",
+          rShort: "Classified semantic impact and determined discrepancy categories & severities",
+          rDetail: "Evaluated each discrepancy against semantic and sentiment criteria. Dispatched categorize_discrepancy to structure findings into Factual, Tone, or Omission with High/Medium/Low severity.",
+          aTitle: "3. Act",
+          aShort: `Executed categorize_discrepancy tool`,
+          aDetail: rawToolCycles[1]?.toolArgs || JSON.stringify(data.discrepancies?.[0] || { category: "Tone/Factual", severity: "High" }, null, 2),
+          aOutput: rawToolCycles[1]?.toolOutput || JSON.stringify(data.discrepancies || [], null, 2),
+          refTitle: "4. Reflect",
+          refShort: "Verified discrepancy categorization; all deltas structured for report generation",
+          refDetail: "Observation evaluated: all discrepancies categorized. Goal state requires final report synthesis (state['done'] = False). Moving to Iteration Cycle #3 for executive summary."
+        });
+      }
 
-      // Cycle 3: Terminal Synthesis & Goal Reflection
+      // Final Cycle: Terminal Synthesis & Goal Reflection
+      const finalCycleNum = cycles.length + 1;
       cycles.push({
-        num: 3,
+        num: finalCycleNum,
         name: "terminal_synthesis",
         badge: "Synthesis & Reflection",
         pTitle: "1. Perceive",
@@ -311,7 +314,7 @@ Stylistic note: The updated infrastructure delivers robust stability.`,
         aOutput: data.result || "Report generated.",
         refTitle: "4. Reflect",
         refShort: "Goal verified complete! Reflect set done = True and cleanly exited loop",
-        refDetail: `reflect() evaluation check: Final content generated and validated against objectives. state['done'] = True. Cognitive loop exited on Iteration 3 within token budget.`
+        refDetail: `reflect() evaluation check: Final content generated and validated against objectives. state['done'] = True. Cognitive loop exited on Iteration ${finalCycleNum} within token budget.`
       });
     }
 

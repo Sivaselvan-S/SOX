@@ -376,12 +376,11 @@ class ProductionAgentHarness:
                 },
             )
 
-        if state["status"] == "RUNNING":
-            if state["done"]:
-                state["status"] = "SUCCESS"
-            else:
-                state["status"] = "MAX_ITERATIONS_REACHED"
-                if not state["result"]:
-                    state["result"] = "Maximum iterations reached before final output completion."
+        if state.get("done") and state.get("result") and not state["status"].startswith("GUARDRAIL"):
+            state["status"] = "SUCCESS"
+        elif state["status"] == "RUNNING":
+            state["status"] = "MAX_ITERATIONS_REACHED"
+            if not state["result"]:
+                state["result"] = "Maximum iterations reached before final output completion."
 
         return state
